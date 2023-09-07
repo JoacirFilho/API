@@ -7,32 +7,58 @@ class Produtos(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_produto = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Integer, nullable=False)
-    fabric = db.Column(db.String)
     quant = db.Column(db.Integer)
     tipo = db.Column(db.String)
+    fornecedor_id = db.Column(db.Integer, db.ForeignKey('fornecedor.id'), nullable=False)
 
-class Usuarios(db.Model):
+class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    senha = db.Column(db.Integer, nullable=False)
+    senha = db.Column(db.String, nullable=False)
     login = db.Column(db.String, nullable=False)
     nome_usuario = db.Column(db.String, nullable=False)
+
+class Fornecedor(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_fornecedor = db.Column(db.String, nullable=False)
+
+class Carrinho(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    produtos_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
+
 
 class ProdutosSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Produtos
+        include_fk = True
 
     id = ma.auto_field()
     nome_produto = ma.auto_field()
     price = ma.auto_field()
-    fabric = ma.auto_field()
     quant = ma.auto_field()
     tipo = ma.auto_field()
+    fornecedor_id = ma.auto_field()
 
-class UsuariosSchema(ma.SQLAlchemyAutoSchema):
+class UsuarioSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = Usuarios
+        model = Usuario
 
     id = ma.auto_field()
     senha = ma.auto_field()
     login = ma.auto_field()
     nome_usuario = ma.auto_field()
+
+
+class FornecedorSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Fornecedor
+
+    id = ma.auto_field
+    nome_fornecedor = ma.auto_field
+
+class CarrinhoSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Carrinho
+
+    usuario_id = ma.auto_field
+    produtos_id = ma.auto_field
