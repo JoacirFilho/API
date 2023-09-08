@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from datetime import datetime
 db = SQLAlchemy()
 ma = Marshmallow()
 
@@ -21,11 +22,16 @@ class Fornecedor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_fornecedor = db.Column(db.String, nullable=False)
 
-class Carrinho(db.Model):
+class Vendas(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    produtos_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
+    produtos_vendidos = db.relationship('ProdutosVendidos', backref='venda', lazy=True)
 
+class ProdutosVendidos(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    venda_id = db.Column(db.Integer, db.ForeignKey('vendas.id'), nullable=False)
+    produtos_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
+    quantidade_vendida = db.Column(db.Integer, nullable=False)
 
 class ProdutosSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -56,9 +62,22 @@ class FornecedorSchema(ma.SQLAlchemyAutoSchema):
     id = ma.auto_field
     nome_fornecedor = ma.auto_field
 
-class CarrinhoSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Carrinho
 
-    usuario_id = ma.auto_field
-    produtos_id = ma.auto_field
+class VendasSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Vendas
+        include_fk = True
+
+    id = ma.auto_field()
+    usuario_id = ma.auto_field()
+    produtos_vendidos = ma.auto_field()
+
+class ProdutosVendidosSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = ProdutosVendidos
+        include_fk = True
+
+    id = ma.auto_field()
+    venda_id = ma.auto_field()
+    produtos_id = ma.auto_field()
+    quantidade_vendida = ma.auto_field()

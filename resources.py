@@ -1,13 +1,12 @@
 from flask_restful import Resource, request
-from flask import jsonify
-from models import db, ProdutosSchema,Produtos,Usuario, UsuarioSchema,Fornecedor,FornecedorSchema,Carrinho,CarrinhoSchema
+from models import db, ProdutosSchema,Produtos,Usuario, UsuarioSchema,Fornecedor,FornecedorSchema,ProdutosVendidos,Vendas,VendasSchema,ProdutosVendidosSchema
 
 class ProdutosResource(Resource):
     # Cadastro de Produtos
     def post(self):
         data = request.json
 
-        # Verifique se o fornecedor existe
+        # Verificar se o fornecedor existe
         fornecedor_id = data.get('fornecedor_id')
         fornecedor = Fornecedor.query.get(fornecedor_id)
 
@@ -39,10 +38,10 @@ class ProdutosResource(Resource):
         return ProdutosSchema().dump(produtos)
     
     #Alteração de produtos
-    def put(self, produtos):
-        produtos = Produtos.query.get(produtos)
+    def put(self, produtos_id):
+        produtos = Produtos.query.get(produtos_id)
         if not produtos:
-            return jsonify({"message": "Produtos não encontrado"}), 404
+            return ({"message": "Produtos não encontrado"}), 404
 
         data = request.json
         produtos.nome_produto = data.get('nome_produto', produtos.nome_produto)
@@ -53,19 +52,19 @@ class ProdutosResource(Resource):
 
         db.session.commit()
 
-        return jsonify(ProdutosSchema().dump(produtos))
+        return (ProdutosSchema().dump(produtos))
 
     
     #Exclusão de produtos
-    def delete(self, produtos):
-        produtos = Produtos.query.get(produtos)
+    def delete(self, produtos_id):
+        produtos = Produtos.query.get(produtos_id)
         if not produtos:
-            return jsonify({"message": "Produtos não encontrado"}), 404
+            return({"message": "Produtos não encontrado"}), 404
         
         db.session.delete(produtos)
         db.session.commit()
 
-        return jsonify({"message": "Produtos excluído com sucesso"}), 204
+        return({"message": "Produtos excluído com sucesso"}), 204
 
 
 
@@ -76,7 +75,8 @@ class UsuarioResource(Resource):
         usuarios = Usuario(nome_usuario=data['nome_usuario'], login=data['login'], senha=data['senha'])
         db.session.add(usuarios)
         db.session.commit()
-        return UsuarioSchema().dump(usuarios),201
+
+        return {"message": "Usuario Criado com SUCESSO!"}, 201
     
     #Listagem de Usuarios
     def get(self, usuarios=None):
@@ -102,18 +102,19 @@ class UsuarioResource(Resource):
 
         db.session.commit()
 
-        return UsuarioSchema().dump(Usuario)
+        return {"message": "Usuario Alterado com SUCESSO!"}, 201
     
     #Exclusão de usuarios
     def delete(self, usuarios_id):
         usuario = Usuario.query.get(usuarios_id)
         if not usuario:
-            return {"message": "usuarios não encontrado"}, 404
-        
+            return {"message": "Usuário não encontrado"}, 404
+
         db.session.delete(usuario)
         db.session.commit()
 
-        return {"message": "usuarios excluído com sucesso"}, 204
+        return {"message": "Usuário excluído com sucesso"}, 204
+
 
 
 class FornecedorResource(Resource):
@@ -137,10 +138,10 @@ class FornecedorResource(Resource):
         return FornecedorSchema().dump(fornecedores)
     
     #Alteração de fornecedores
-    def put(self, fornecedores_id):
-        fornecedor = Fornecedor.query.get(fornecedores_id)
+    def put(self, fornecedor_id):
+        fornecedor = Fornecedor.query.get(fornecedor_id)
         if not fornecedor:
-            return {"message": "fornecedors não encontrado"}, 404
+            return {"message": "fornecedores não encontrado"}, 404
 
         data = request.json
         fornecedor.nome_fornecedor = data.get('nome_fornecedor', fornecedor.nome_fornecedor)
@@ -150,98 +151,136 @@ class FornecedorResource(Resource):
         return FornecedorSchema().dump(fornecedor)
     
     #Exclusão de fornecedors
-    def delete(self, fornecedores_id):
-        fornecedor = Fornecedor.query.get(fornecedores_id)
+    def delete(self, fornecedor_id):
+        fornecedor = Fornecedor.query.get(fornecedor_id)
         if not fornecedor:
-            return {"message": "fornecedores não encontrado"}, 404
+            return {"message": "fornecedors não encontrado"}, 404
         
         db.session.delete(fornecedor)
         db.session.commit()
 
-        return {"message": "fornecedores excluído com sucesso"}, 204
+        return {"message": "fornecedor excluído com sucesso"}, 204
 
-class CarrinhoResource(Resource):
-    # Cadastro de carrinhos
+
+class VendasResource(Resource):
     def post(self):
         data = request.json
 
-        # Verifique se o usuário existe
-        usuario_id = data.get('usuario_id')
-        usuario = Usuario.query.get(usuario_id)
+        if "usuario_id" not in data or "produtos_vendidos" not in data:
+            return {"message": "Dados incompleto"}, 400
 
-        if not usuario:
-            return {"message": "Usuário não encontrado"}, 400
+        usuario_id = data["usuario_id"]
+        produtos_vendidos = data["produtos_vendidos"]
 
-        # Continue com a criação do carrinho
-        carrinhos = Carrinho(
-            usuario_id=usuario_id,
-            produtos_id=data['produtos_id']
-        )
+        # Lista para armazenar os objetos ProdutosVendidos
+        produtos_vendidos_objs = []
 
-        db.session.add(carrinhos)
+        # Itere pelos produtos vendidos no JSON
+        for item in produtos_vendidos:
+            produto_id = item.get("produto_id")
+            quantidade_vendida = item.get("quantidade_vendida")
+
+            # Verificar se o produto existe
+            produto = Produtos.query.get(produto_id)
+            if not produto:
+                return {"message": f"Produto com ID {produto_id} não encontrado"}, 404
+
+            # Verificar se a quantidade vendida é válida
+            if quantidade_vendida <= 0:
+                return {"message": "Quantidade vendida deve ser maior que zero"}, 400
+
+            # Verificar se há estoque suficiente
+            if quantidade_vendida > produto.quant:
+                return {"message": f"Estoque insuficiente para o produto {produto_id}"}, 400
+
+            # Crie o objeto ProdutosVendidos
+            produtos_vendidos_obj = ProdutosVendidos(
+                produtos_id=produto_id,
+                quantidade_vendida=quantidade_vendida
+            )
+
+            produtos_vendidos_objs.append(produtos_vendidos_obj)
+            
+            # Atualize o estoque do produto
+            produto.quant -= quantidade_vendida
+            db.session.add(produto)
+
+        # Crie a venda
+        nova_venda = Vendas(usuario_id=usuario_id, produtos_vendidos=produtos_vendidos_objs)
+
+        # Adicione a nova venda à sessão do banco de dados e faça o commit
+        db.session.add(nova_venda)
         db.session.commit()
-        return CarrinhoSchema().dump(carrinhos), 201
+
+        return {"message": "Venda realizada com sucesso"}, 201
     
-    #Listagem de carrinhos
-    def get(self, carrinhos=None):
-        if carrinhos is None:
-            carrinhos = Carrinho.query.all()
-            return CarrinhoSchema(many=True).dump(carrinhos)
+    def get(self, vendas=None):
+        if vendas is None:
+            vendas = Vendas.query.all()
+            return VendasSchema(many=True).dump(vendas)
         
-        carrinhos = Carrinho.query.get(carrinhos)
-        if not carrinhos:
-            return {"message": "Carrinho não encontrado"}, 404
-        return CarrinhoSchema().dump(carrinhos)
+        vendas = Vendas.query.get(vendas)
+        if not vendas:
+            return {"message": "Venda não encontrada"}, 404
+        return VendasSchema().dump(vendas)
     
-    #Alteração de carrinhos
-    def put(self, carrinhos_id):
-        carrinho = Carrinho.query.get(carrinhos_id)
-        if not carrinho:
-            return {"message": "Carrinho não encontrado"}, 404
+    # ...
 
-        data = request.json
-        carrinho.usuario_id= data.get('usuario_id', carrinho.usuario_id)
-        carrinho.produtos_id = data.get('produtos_id', carrinho.produtos_id)
+def put(self, vendas_id):
+    venda = Vendas.query.get(vendas_id)
+    if not venda:
+        return {"message": f"Venda com ID {vendas_id} não encontrada"}, 404
 
-        db.session.commit()
+    data = request.json
+    usuario_id = data.get('usuario_id', venda.usuario_id)
+    produtos_vendidos_objs = data.get('produtos_vendidos', venda.produtos_vendidos)
 
-        return CarrinhoSchema().dump(carrinho)
-    
-    #Exclusão de carrinhos
-    def delete(self, carrinhos_id):
-        carrinho = Carrinho.query.get(carrinhos_id)
-        if not carrinho:
-            return {"message": "Carrinho não encontrado"}, 404
-        
-        db.session.delete(carrinho)
-        db.session.commit()
+    # Atualize o estoque dos produtos vendidos
+    for produto_vendido_obj in produtos_vendidos_objs:
+        produto_id = produto_vendido_obj.get('produto_id')
+        quantidade_vendida = produto_vendido_obj.get('quantidade_vendida')
+        produto = Produtos.query.get(produto_id)
 
-        return {"message": "Carrinho excluído com sucesso"}, 204
-    
-    def post(self):
-        data = request.json
-        usuario_id = data['usuario_id']
-        produtos_id = data['produtos_id']
-
-        # Verificar se o produto existe
-        produto = Produtos.query.get(produtos_id)
         if not produto:
-            return {"message": "Produto não encontrado"}, 404
+            return {"message": f"Produto com ID {produto_id} não encontrado"}, 404
 
-        quantidade_adicionada = data.get('quantidade_adicionada', 1)
+        if quantidade_vendida > produto.quantidade:
+            return {"message": f"Quantidade insuficiente em estoque para o produto com ID {produto_id}"}, 400
 
-        # Verificar se a quantidade em estoque é suficiente
-        if produto.quant < quantidade_adicionada:
-            return {"message": "Quantidade insuficiente em estoque"}, 400
-
-        # Atualizar o estoque do produto
-        produto.quant -= quantidade_adicionada
+        # Atualize o estoque do produto
+        produto.quantidade -= quantidade_vendida
         db.session.add(produto)
 
-        carrinhos = Carrinho(usuario_id=usuario_id, produtos_id=produtos_id, quantidade=quantidade_adicionada)
-        db.session.add(carrinhos)
+    # ...
+
+    return VendasSchema().dump(venda)
+
+
+        
+    # Crie o objeto ProdutosVendidos
+
+    def delete(self, vendas_id):
+        venda = Vendas.query.get(vendas_id)
+        if not venda:
+            return {"message": "Venda não encontrada"}, 404
+        
+        db.session.delete(venda)
         db.session.commit()
-        return CarrinhoSchema().dump(carrinhos), 201
+
+        return {"message": "Venda excluída com sucesso"}, 204
+    
+class ProdutosVendidosResource(Resource):
+    # Listagem de Produtos Vendidos
+    def get(self, produtos_vendidos=None):
+        if produtos_vendidos is None:
+            produtos_vendidos = ProdutosVendidos.query.all()
+            return ProdutosVendidosSchema(many=True).dump(produtos_vendidos)
+        
+        produtos_vendidos = ProdutosVendidos.query.get(produtos_vendidos)
+        if not produtos_vendidos:
+            return {"message": "Produtos vendidos não encontrados"}, 404
+        return ProdutosVendidosSchema().dump(produtos_vendidos)
+    
 
 
 
