@@ -150,16 +150,16 @@ class FornecedorResource(Resource):
 
         return FornecedorSchema().dump(fornecedor)
     
-    #Exclusão de fornecedors
     def delete(self, fornecedor_id):
         fornecedor = Fornecedor.query.get(fornecedor_id)
         if not fornecedor:
-            return {"message": "fornecedors não encontrado"}, 404
-        
+            return {"message": "Fornecedor não encontrado"}, 404
+
         db.session.delete(fornecedor)
         db.session.commit()
 
-        return {"message": "fornecedor excluído com sucesso"}, 204
+        return {"message": "Fornecedor excluído com sucesso"}, 204
+
 
 
 class VendasResource(Resource):
@@ -245,7 +245,7 @@ def put(self, vendas_id):
             return {"message": f"Produto com ID {produto_id} não encontrado"}, 404
 
         if quantidade_vendida > produto.quantidade:
-            return {"message": f"Quantidade insuficiente em estoque para o produto com ID {produto_id}"}, 400
+            return {"message": f"Quantidade insuficiente em estoque para o produto com ID {produto}"}, 400
 
         # Atualize o estoque do produto
         produto.quantidade -= quantidade_vendida
